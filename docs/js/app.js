@@ -68,6 +68,30 @@ async function avisarCambio() {
   }
 }
 
+// ---------------------------------------------------------------- tema claro / oscuro
+
+function temaActual() {
+  const elegido = document.documentElement.dataset.theme;
+  if (elegido) return elegido;
+  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function pintarTema() {
+  const boton = document.getElementById("tema");
+  const oscuro = temaActual() === "dark";
+  const etiqueta = oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro";
+  boton.replaceChildren(icono(oscuro ? "sol" : "luna", 20));
+  boton.setAttribute("aria-label", etiqueta);
+  boton.title = etiqueta;
+}
+
+function alternarTema() {
+  const nuevo = temaActual() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = nuevo;
+  try { localStorage.setItem("quecomo-tema", nuevo); } catch { /* sin almacenamiento: dura hasta recargar */ }
+  pintarTema();
+}
+
 // ---------------------------------------------------------------- vistas
 
 function recargarVista() {
@@ -127,6 +151,9 @@ async function iniciar() {
   datos = await obtenerDatos();
   document.getElementById("franja-demo").hidden = !esDemo();
   pintarSesion();
+  pintarTema();
+  document.getElementById("tema").addEventListener("click", alternarTema);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", pintarTema);
   window.addEventListener("hashchange", mostrar);
   window.addEventListener("quecomo:sesion", () => { pintarSesion(); avisarCambio(); });
   await mostrar();

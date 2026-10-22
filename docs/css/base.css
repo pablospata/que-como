@@ -28,8 +28,9 @@
   color-scheme: light;
 }
 
+/* Tema: sigue al sistema salvo que se elija uno con el botón (data-theme en <html>). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --fondo: #141715;
     --superficie: #1d211e;
     --superficie-2: #262b27;
@@ -51,6 +52,29 @@
     --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --fondo: #141715;
+  --superficie: #1d211e;
+  --superficie-2: #262b27;
+  --borde: #333a35;
+  --texto: #e8ebe8;
+  --texto-2: #a9b0aa;
+  --texto-3: #7c847e;
+  --acento: #5bbd8a;
+  --acento-suave: #1f3a2b;
+  --acento-texto: #0d1a12;
+  --exceso: #e88a55;
+  --exceso-suave: #3d2618;
+  --error: #f2867d;
+  --pendiente: #c8b483;
+  --pendiente-suave: #2e2a1f;
+  --proteina: #7aa7e8;
+  --carbos: #e0c050;
+  --grasa: #e08aaa;
+  --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+  color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

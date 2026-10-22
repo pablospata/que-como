@@ -9,6 +9,10 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <script>
+    // aplica el tema elegido antes de pintar, para que no parpadee
+    try { const t = localStorage.getItem("quecomo-tema"); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/captura.css">
   <link rel="stylesheet" href="css/panel.css">
@@ -28,6 +32,7 @@
       <div class="cabecera-der">
         <span id="insignia-pendientes" class="chip chip-pendientes" hidden
               title="Pedile a Claude «procesá» en la carpeta que-como"></span>
+        <button id="tema" class="btn-icono" type="button"></button>
         <div id="sesion" class="sesion"></div>
       </div>
     </div>
