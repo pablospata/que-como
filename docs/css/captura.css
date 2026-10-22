@@ -328,7 +328,14 @@ div.cap-tira-item { cursor: default; }
 .cap-arriba-der { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 
 /* cuándo se comió (anotar sin foto) */
-.cap-hoja-cuando { display: grid; grid-template-columns: 3fr 2fr; gap: 8px; }
-.cap-hoja-cuando .entrada { min-width: 0; }
+.cap-hoja-cuando { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+/* los campos nativos de fecha y hora del celu tienen anchos y alturas propios: se fuerzan */
+.cap-hoja-cuando .entrada {
+  display: block; width: 100%; max-width: 100%; min-width: 0;
+  min-height: 46px; font-size: 16px; text-align: left;
+  -webkit-appearance: none; appearance: none;
+}
+.cap-hoja-cuando .entrada::-webkit-date-and-time-value { text-align: left; }
+@media (min-width: 420px) { .cap-hoja-cuando { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 .cap-hoja-aviso { margin: 0; font-size: .85rem; color: var(--error); }
 .cap-hoja-aviso:empty { display: none; }
