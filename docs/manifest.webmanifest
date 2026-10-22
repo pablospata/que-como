@@ -1,0 +1,21 @@
+{
+  "name": "Qué como",
+  "short_name": "Qué como",
+  "description": "Registro de comidas con fotos",
+  "lang": "es",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./#/captura",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2b7a52",
+  "background_color": "#f6f4ef",
+  "categories": ["health", "food", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

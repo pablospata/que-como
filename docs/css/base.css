@@ -1,0 +1,244 @@
+/* Base compartida: tokens, tipografía y componentes comunes. Cada vista agrega lo suyo en su CSS. */
+
+:root {
+  --fondo: #f6f4ef;
+  --superficie: #ffffff;
+  --superficie-2: #efece5;
+  --borde: #e2ddd2;
+  --texto: #1f2421;
+  --texto-2: #5d645f;
+  --texto-3: #8b918c;
+  --acento: #2b7a52;          /* verde: dentro de la meta, acciones */
+  --acento-suave: #dcefe3;
+  --acento-texto: #ffffff;
+  --exceso: #c4602a;          /* naranja: por arriba de la meta */
+  --exceso-suave: #f8e4d6;
+  --error: #b3261e;
+  --pendiente: #8a7a52;       /* capturas sin procesar */
+  --pendiente-suave: #f1ecdf;
+  --proteina: #3d6fb5;
+  --carbos: #c9a227;
+  --grasa: #b5557a;
+  --sombra: 0 1px 2px rgba(30, 30, 20, .06), 0 4px 14px rgba(30, 30, 20, .06);
+  --radio: 14px;
+  --radio-chico: 9px;
+  --ancho: 1100px;
+  --fuente: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #141715;
+    --superficie: #1d211e;
+    --superficie-2: #262b27;
+    --borde: #333a35;
+    --texto: #e8ebe8;
+    --texto-2: #a9b0aa;
+    --texto-3: #7c847e;
+    --acento: #5bbd8a;
+    --acento-suave: #1f3a2b;
+    --acento-texto: #0d1a12;
+    --exceso: #e88a55;
+    --exceso-suave: #3d2618;
+    --error: #f2867d;
+    --pendiente: #c8b483;
+    --pendiente-suave: #2e2a1f;
+    --proteina: #7aa7e8;
+    --carbos: #e0c050;
+    --grasa: #e08aaa;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.45 var(--fuente);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1rem; }
+p { margin: 0 0 .75em; }
+a { color: var(--acento); }
+img { max-width: 100%; display: block; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.num { font-variant-numeric: tabular-nums; }
+.secundario { color: var(--texto-2); }
+.terciario { color: var(--texto-3); font-size: .875rem; }
+.visualmente-oculto {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ cabecera */
+
+.franja-demo {
+  background: var(--pendiente-suave);
+  color: var(--pendiente);
+  text-align: center;
+  font-size: .8rem;
+  padding: 4px 16px;
+}
+
+.cabecera {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--fondo) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--borde);
+}
+
+.cabecera-in {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+
+.marca {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin-right: 12px;
+  font-weight: 700; font-size: 1.1rem; letter-spacing: -.01em;
+  color: var(--texto); text-decoration: none;
+}
+.marca-logo { width: 28px; height: 28px; border-radius: 8px; display: block; }
+
+.tabs { display: flex; gap: 4px; }
+.tabs a {
+  padding: 6px 12px; border-radius: 999px;
+  color: var(--texto-2); text-decoration: none; font-weight: 500;
+}
+.tabs a:hover { background: var(--superficie-2); color: var(--texto); }
+.tabs a.activa { background: var(--texto); color: var(--fondo); }
+
+.cabecera-der { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.sesion { display: flex; align-items: center; gap: 6px; }
+.sesion-email { font-size: .85rem; color: var(--texto-2); max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 699px) {
+  .cabecera-in { gap: 8px 12px; }
+  .tabs { order: 3; width: 100%; overflow-x: auto; }
+  .sesion-email { display: none; }
+}
+
+/* En la cámara no hay cabecera: pantalla completa. */
+body.modo-captura .cabecera,
+body.modo-captura .franja-demo { display: none; }
+
+/* ------------------------------------------------------------ contenedor de vistas */
+
+.vista {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+body.modo-captura .vista { max-width: none; padding: 0; }
+
+.cargando { color: var(--texto-3); padding: 40px 0; text-align: center; }
+
+.vacio {
+  text-align: center; color: var(--texto-2);
+  padding: 40px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.vacio p { margin: 0; max-width: 46ch; }
+
+/* ------------------------------------------------------------ componentes */
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 16px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 16px;
+  border-radius: 999px; border: 1px solid var(--borde);
+  background: var(--superficie); color: var(--texto);
+  font-weight: 600; cursor: pointer;
+}
+.btn:hover { background: var(--superficie-2); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn-primario { background: var(--acento); border-color: var(--acento); color: var(--acento-texto); }
+.btn-primario:hover { background: color-mix(in srgb, var(--acento) 88%, black); }
+.btn-peligro { color: var(--error); }
+.btn-chico { min-height: 32px; padding: 4px 12px; font-size: .875rem; }
+
+.btn-icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0;
+  border: 0; border-radius: 999px; background: transparent;
+  color: var(--texto-2); cursor: pointer;
+}
+.btn-icono:hover { background: var(--superficie-2); color: var(--texto); }
+.icono { display: inline-flex; line-height: 0; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: 999px;
+  font-size: .8rem; font-weight: 600;
+  background: var(--superficie-2); color: var(--texto-2);
+  white-space: nowrap;
+}
+.chip-ok { background: var(--acento-suave); color: var(--acento); }
+.chip-exceso { background: var(--exceso-suave); color: var(--exceso); }
+.chip-pendientes, .chip-pendiente { background: var(--pendiente-suave); color: var(--pendiente); }
+.chip-pendientes { cursor: help; }
+
+.campo { display: flex; flex-direction: column; gap: 4px; }
+.campo > span, .campo > label { font-size: .85rem; color: var(--texto-2); font-weight: 500; }
+.campo input, .campo select, .campo textarea, input.entrada, textarea.entrada, select.entrada {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--superficie);
+}
+.campo textarea, textarea.entrada { resize: vertical; min-height: 64px; }
+.campo input:focus, .campo select:focus, .campo textarea:focus, .entrada:focus {
+  outline: 2px solid var(--acento); outline-offset: -1px; border-color: transparent;
+}
+
+.fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grilla { display: grid; gap: 16px; }
+
+/* ------------------------------------------------------------ avisos */
+
+.toasts {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px; align-items: center;
+  z-index: 100; pointer-events: none; width: min(92vw, 420px);
+}
+.toast {
+  background: var(--texto); color: var(--fondo);
+  padding: 10px 16px; border-radius: 12px;
+  box-shadow: var(--sombra);
+  font-size: .9rem;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity .2s, transform .2s;
+}
+.toast.visible { opacity: 1; transform: none; }
+.toast-error { background: var(--error); color: #fff; }
+.toast-ok { background: var(--acento); color: var(--acento-texto); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

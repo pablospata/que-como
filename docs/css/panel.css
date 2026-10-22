@@ -1,0 +1,376 @@
+/* Panel: vistas Hoy y Semana, comidas y capturas pendientes.
+   Minimalista: pocas cajas, jerarquía con tipografía y espacio, divisores finos. */
+
+/* ------------------------------------------------------------ navegación de fecha */
+
+.nav-fecha {
+  display: flex; align-items: center; gap: 2px;
+  margin: 4px 0 28px;
+}
+.nav-fecha-titulo { display: flex; flex-direction: column; min-width: 0; padding: 0 8px; }
+.nav-fecha-titulo h1 { margin: 0; font-size: 1.35rem; font-weight: 650; letter-spacing: -.01em; }
+.nav-fecha-titulo .terciario { font-size: .8rem; }
+.nav-fecha .btn-icono { width: 36px; height: 36px; color: var(--texto-3); }
+.nav-fecha .btn-icono:hover { color: var(--texto); }
+.nav-fecha .btn-icono:disabled { opacity: .3; cursor: default; background: transparent; }
+.nav-hoy {
+  margin-left: 10px; min-height: 30px; padding: 3px 12px;
+  font-weight: 500; color: var(--texto-2);
+}
+
+/* botón de texto, sin caja */
+.btn-texto {
+  border: 0; background: none; padding: 4px 0; cursor: pointer;
+  color: var(--texto-2); font-size: .85rem; font-weight: 500;
+}
+.btn-texto:hover { color: var(--texto); text-decoration: underline; text-underline-offset: 3px; }
+.btn-texto.peligro:hover { color: var(--error); }
+.btn-texto:disabled { opacity: .5; cursor: default; }
+
+.ayuda { margin: 0; font-size: .8rem; color: var(--texto-3); }
+
+/* ------------------------------------------------------------ Hoy: estructura */
+
+.hoy-grilla { display: grid; gap: 32px; align-items: start; }
+.hoy-comidas { min-width: 0; }
+
+@media (min-width: 860px) {
+  .hoy-grilla { grid-template-columns: 240px minmax(0, 1fr); gap: 56px; }
+  .hoy-resumen { position: sticky; top: 84px; }
+}
+
+.hoy-vacio { padding: 48px 0; text-align: left; align-items: flex-start; color: var(--texto-3); }
+
+/* ------------------------------------------------------------ Hoy: resumen del día */
+
+.resumen-dia { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.anillo { width: 176px; height: 176px; display: block; }
+.anillo-fondo { fill: none; stroke: var(--superficie-2); stroke-width: 7; }
+.anillo-valor {
+  fill: none; stroke: var(--acento); stroke-width: 7; stroke-linecap: round;
+  transition: stroke-dasharray .4s ease;
+}
+.anillo-valor.exceso { stroke: var(--exceso); }
+.anillo-numero {
+  fill: var(--texto); font-size: 34px; font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.anillo-sub { fill: var(--texto-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.resumen-linea { margin: 0; color: var(--texto-2); font-size: .95rem; text-align: center; }
+.resumen-linea.exceso { color: var(--exceso); }
+
+.resumen-macros { align-self: stretch; display: flex; flex-direction: column; gap: 14px; margin-top: 22px; }
+.macro-texto {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: .82rem; color: var(--texto-2);
+}
+.macro-texto .num { color: var(--texto); }
+.macro-barra { margin-top: 6px; height: 3px; border-radius: 2px; background: var(--superficie-2); overflow: hidden; }
+.macro-barra > span { display: block; height: 100%; border-radius: inherit; transition: width .4s ease; }
+.macro-proteina .macro-barra > span { background: var(--proteina); }
+.macro-carbos .macro-barra > span { background: var(--carbos); }
+.macro-grasa .macro-barra > span { background: var(--grasa); }
+
+@media (min-width: 520px) and (max-width: 859px) {
+  .resumen-dia { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 40px; align-items: center; }
+  .resumen-dia .anillo { grid-row: 1 / span 2; }
+  .resumen-linea { text-align: left; align-self: end; }
+  .resumen-macros { margin-top: 10px; align-self: start; }
+}
+
+/* ------------------------------------------------------------ una comida */
+
+.entrada {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px;
+  padding: 18px 0;
+}
+.hoy-comidas > .entrada + .entrada { border-top: 1px solid var(--borde); }
+.hoy-comidas > .entrada:first-child { padding-top: 4px; }
+.entrada.editando { grid-template-columns: minmax(0, 1fr); }
+.entrada.comida:not(.editando) .entrada-cuerpo { cursor: pointer; }
+
+.miniatura {
+  position: relative; width: 64px; height: 64px; padding: 0; border: 0;
+  border-radius: 10px; overflow: hidden; cursor: zoom-in;
+  background: var(--superficie-2);
+}
+.miniatura img { width: 100%; height: 100%; object-fit: cover; transition: opacity .2s; }
+.miniatura img.cargando-foto, .miniatura img.foto-error { opacity: 0; }
+.miniatura.gris img { filter: grayscale(1); opacity: .6; }
+.miniatura-vacia {
+  display: grid; place-items: center; cursor: default;
+  background: transparent; border: 1px dashed var(--borde); color: var(--texto-3);
+}
+.miniatura-cuenta {
+  position: absolute; right: 4px; bottom: 4px;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: color-mix(in srgb, var(--texto) 70%, transparent); color: var(--fondo);
+  font-size: .7rem; font-weight: 600; line-height: 18px; text-align: center;
+}
+
+.entrada-cuerpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.entrada-linea { display: flex; align-items: flex-start; gap: 12px; }
+.entrada-titulos { flex: 1; min-width: 0; }
+.entrada-meta { font-size: .78rem; color: var(--texto-3); }
+.entrada-meta > span + span::before { content: "·"; margin: 0 6px; color: var(--texto-3); }
+.marca-revisar, .marca-pendiente { color: var(--pendiente); }
+.entrada-titulo { margin: 1px 0 0; font-size: 1rem; font-weight: 600; }
+.entrada-kcal { font-size: 1.05rem; font-weight: 600; white-space: nowrap; padding-top: 14px; }
+.entrada-kcal span { font-size: .78rem; font-weight: 400; color: var(--texto-3); }
+.entrada-mas { width: 32px; height: 32px; margin-top: 9px; margin-right: -6px; color: var(--texto-3); opacity: 0; transition: opacity .15s; }
+.entrada:hover .entrada-mas, .entrada:focus-within .entrada-mas, .entrada.abierta .entrada-mas { opacity: 1; }
+@media (hover: none) { .entrada-mas { opacity: 1; } }
+
+.entrada-items {
+  list-style: none; margin: 4px 0 0; padding: 0;
+  font-size: .85rem; color: var(--texto-2);
+}
+.entrada-items li { line-height: 1.55; }
+.entrada-items .num { color: var(--texto-3); }
+
+.entrada-nota, .entrada-comentario { margin: 2px 0 0; font-size: .85rem; }
+.entrada-nota { color: var(--texto-2); font-style: italic; }
+.entrada-comentario {
+  color: var(--texto-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.entrada.abierta .entrada-comentario { white-space: normal; }
+
+.entrada-detalle { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; cursor: default; }
+.entrada-pedido { margin: 0; font-size: .85rem; color: var(--pendiente); }
+.entrada-acciones { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+
+/* tabla de items (al desplegar) */
+.items { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.items th, .items td { padding: 5px 8px; text-align: left; vertical-align: top; }
+.items th:first-child, .items td:first-child { padding-left: 0; }
+.items th:last-child, .items td:last-child { padding-right: 0; }
+.items thead th { font-weight: 500; color: var(--texto-3); border-bottom: 1px solid var(--borde); }
+.items tbody td { color: var(--texto-2); }
+.items tbody td:first-child { color: var(--texto); }
+.items tfoot td { border-top: 1px solid var(--borde); font-weight: 600; padding-top: 7px; }
+.items .n { text-align: right; white-space: nowrap; width: 3.4em; }
+.items .col-porcion { width: 34%; color: var(--texto-3); }
+.porcion-movil { display: none; }
+
+/* campos dentro de una comida */
+.entrada-texto {
+  width: 100%; padding: 7px 10px;
+  border: 1px solid var(--borde); border-radius: var(--radio-chico);
+  background: var(--superficie); font-size: .9rem;
+}
+textarea.entrada-texto { resize: vertical; min-height: 44px; }
+.entrada-texto:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: transparent; }
+.entrada-texto.invalido { outline: 2px solid var(--error); outline-offset: -1px; }
+
+.form-revision, .form-edicion { display: flex; flex-direction: column; gap: 10px; }
+
+.edicion-cabeza { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 10px; margin-top: 4px; }
+.edicion-items { display: flex; flex-direction: column; gap: 6px; }
+.edicion-fila {
+  display: grid; gap: 6px; align-items: center;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) repeat(4, 64px) 32px;
+}
+.edicion-encabezado { font-size: .75rem; color: var(--texto-3); margin-bottom: -2px; }
+.edicion-encabezado .n { text-align: right; padding-right: 10px; }
+.edicion-fila .entrada-texto { padding: 6px 8px; }
+.edicion-fila .entrada-texto.n { text-align: right; font-variant-numeric: tabular-nums; }
+.celda { display: block; min-width: 0; }
+.celda-etiqueta { display: none; }
+.quitar-item { width: 32px; height: 32px; color: var(--texto-3); }
+.edicion-pie { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.edicion-total { margin: 0; font-size: .85rem; color: var(--texto-2); }
+
+/* captura pendiente */
+.entrada.pendiente .entrada-linea { align-items: center; }
+.nota-editable {
+  display: block; max-width: 100%; margin-top: 2px; padding: 2px 0;
+  border: 0; background: none; text-align: left; cursor: text;
+  color: var(--texto-2); font-size: .95rem;
+}
+.nota-editable:hover { color: var(--texto); }
+.nota-editable.vacia { color: var(--texto-3); font-size: .875rem; }
+.entrada.pendiente .entrada-texto { margin-top: 4px; }
+.entrada-descartar { opacity: 0; transition: opacity .15s; }
+.entrada:hover .entrada-descartar, .entrada:focus-within .entrada-descartar { opacity: 1; }
+@media (hover: none) { .entrada-descartar { opacity: 1; } }
+
+/* ------------------------------------------------------------ visor de fotos y confirmación */
+
+dialog.visor {
+  width: 100vw; height: 100vh; max-width: none; max-height: none;
+  margin: 0; padding: 0; border: 0;
+  background: transparent; color: #fff;
+}
+dialog.visor::backdrop { background: rgba(8, 10, 9, .92); }
+.visor-barra {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 1;
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 20px;
+}
+.visor-titulo { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.visor-contador { color: rgba(255, 255, 255, .6); font-size: .85rem; }
+dialog.visor .btn-icono { color: rgba(255, 255, 255, .8); }
+dialog.visor .btn-icono:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+.visor-cuerpo {
+  height: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 60px 12px 24px;
+}
+.visor-foto { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; min-width: 0; pointer-events: none; }
+.visor-foto img {
+  max-width: 100%; max-height: 100%; object-fit: contain;
+  border-radius: 4px; pointer-events: auto; transition: opacity .2s;
+}
+.visor-foto img.cargando-foto { opacity: 0; }
+.visor-flecha { flex-shrink: 0; width: 48px; height: 48px; }
+
+dialog.confirmar {
+  max-width: min(400px, calc(100vw - 32px)); padding: 22px;
+  color: var(--texto); box-shadow: var(--sombra);
+}
+dialog.confirmar::backdrop { background: rgba(10, 12, 11, .4); }
+dialog.confirmar h2 { font-size: 1.05rem; font-weight: 600; }
+.confirmar-botones { justify-content: flex-end; margin-top: 8px; }
+.btn-peligro-lleno { background: var(--error); border-color: var(--error); color: var(--superficie); }
+.btn-peligro-lleno:hover { background: color-mix(in srgb, var(--error) 88%, black); }
+
+/* ------------------------------------------------------------ Semana */
+
+.semana-datos {
+  display: flex; flex-wrap: wrap; gap: 20px 56px;
+  margin: 0 0 36px;
+}
+.dato { display: flex; flex-direction: column; gap: 2px; cursor: default; }
+.dato-valor { font-size: 1.5rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
+.dato-valor small { font-size: .8rem; font-weight: 400; color: var(--texto-3); letter-spacing: 0; }
+.dato-flecha { color: var(--texto-3); font-weight: 400; }
+.dato-etiqueta { font-size: .78rem; color: var(--texto-3); }
+
+.semana-grafico { margin: 0 0 12px; }
+.grafico-semana { width: 100%; height: auto; display: block; overflow: visible; }
+.grafico-semana text { font-family: var(--fuente); font-variant-numeric: tabular-nums; }
+.linea-base { stroke: var(--borde); stroke-width: 1; }
+.linea-meta { fill: none; stroke: var(--texto-3); stroke-width: 1.2; stroke-dasharray: 4 4; pointer-events: none; }
+.meta-texto { fill: var(--texto-3); font-size: 11px; }
+
+.col { cursor: pointer; outline: none; }
+.col.futuro { cursor: default; }
+.col-fondo { fill: transparent; transition: fill .15s; }
+.col:not(.futuro):hover .col-fondo, .col:focus-visible .col-fondo { fill: var(--superficie-2); }
+.col:focus-visible .col-fondo { stroke: var(--acento); stroke-width: 1.5; }
+.barra { fill: var(--acento); }
+.barra.exceso { fill: var(--exceso); }
+.barra-vacia { fill: var(--borde); }
+.valores { pointer-events: none; }
+.barra-valor {
+  fill: var(--texto); font-size: 12px; font-weight: 600;
+  opacity: 0; transition: opacity .12s;
+  paint-order: stroke; stroke: var(--fondo); stroke-width: 4px; stroke-linejoin: round;
+}
+.barra-valor.visible { opacity: 1; }
+.dia-nombre { fill: var(--texto-2); font-size: 12.5px; }
+.dia-fecha { fill: var(--texto-3); font-size: 11px; }
+.col.es-hoy .dia-nombre { fill: var(--texto); font-weight: 700; }
+.col.es-hoy .dia-fecha { fill: var(--texto-2); }
+.col.futuro .dia-nombre, .col.futuro .dia-fecha { opacity: .45; }
+
+.semana-sin-meta { margin: 0 0 12px; }
+
+.semana-detalle { margin-top: 20px; border-top: 1px solid var(--borde); padding-top: 12px; }
+.semana-detalle summary {
+  cursor: pointer; width: max-content; padding: 4px 0;
+  font-size: .85rem; color: var(--texto-2); list-style-position: inside;
+}
+.semana-detalle summary:hover { color: var(--texto); }
+.semana-detalle[open] summary { margin-bottom: 8px; }
+
+.tabla-semana { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.tabla-semana th, .tabla-semana td { padding: 8px; text-align: left; border-bottom: 1px solid var(--borde); white-space: nowrap; }
+.tabla-semana th:first-child { padding-left: 0; }
+.tabla-semana th:last-child, .tabla-semana td:last-child { padding-right: 0; }
+.tabla-semana thead th { font-weight: 500; color: var(--texto-3); font-size: .8rem; }
+.tabla-semana tbody th { font-weight: 400; }
+.tabla-semana tbody th a { color: var(--texto); text-decoration: none; }
+.tabla-semana tbody th a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.tabla-semana .n { text-align: right; }
+.tabla-semana td.exceso { color: var(--exceso); }
+.tabla-semana tr.es-hoy th { font-weight: 700; }
+.tabla-semana tr.sin-comidas td, .tabla-semana tr.futuro th { color: var(--texto-3); }
+.tabla-semana tfoot th, .tabla-semana tfoot td { border-bottom: 0; font-weight: 600; }
+.tabla-semana tfoot th .terciario { font-weight: 400; }
+.tabla-semana .corto { display: none; }
+
+/* ------------------------------------------------------------ teléfono */
+
+@media (max-width: 599px) {
+  .nav-fecha { margin-bottom: 20px; }
+  .nav-fecha-titulo h1 { font-size: 1.1rem; }
+  .nav-hoy { margin-left: auto; }
+
+  .anillo { width: 150px; height: 150px; }
+  .entrada { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 14px 0; }
+  .miniatura { width: 52px; height: 52px; }
+  .items .col-porcion { display: none; }
+  .porcion-movil { display: block; font-size: .75rem; color: var(--texto-3); }
+  .items .n { width: auto; }
+
+  .edicion-cabeza { grid-template-columns: 1fr; }
+  .edicion-encabezado { display: none; }
+  .edicion-fila {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) 32px;
+    padding: 10px 0; border-top: 1px solid var(--borde);
+  }
+  .edicion-fila .celda-nombre { grid-column: 1 / 5; }
+  .edicion-fila .celda-porcion { grid-column: 1 / -1; }
+  .edicion-fila .quitar-item { grid-column: 5; grid-row: 1; justify-self: end; }
+  .celda-etiqueta { display: block; font-size: .72rem; color: var(--texto-3); margin-bottom: 2px; }
+
+  .semana-datos { gap: 16px 32px; margin-bottom: 24px; }
+  .dato-valor { font-size: 1.25rem; }
+  .tabla-semana th, .tabla-semana td { padding: 7px 4px; font-size: .82rem; }
+  .tabla-semana .largo { display: none; }
+  .tabla-semana .corto { display: inline; }
+  .tabla-semana tfoot th .terciario { display: none; }
+}
+
+/* ------------------------------------------------------------ tarjetas (Pablo: fondo blanco sí, texto de más no) */
+
+.hoy-resumen,
+.hoy-comidas > .entrada,
+.semana-datos > .dato,
+.semana-grafico,
+.semana-detalle {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.hoy-resumen { padding: 22px 20px; }
+
+.hoy-comidas { display: flex; flex-direction: column; gap: 12px; }
+.hoy-comidas > .entrada,
+.hoy-comidas > .entrada:first-child { padding: 16px; }
+.hoy-comidas > .entrada + .entrada { border-top: 1px solid var(--borde); }
+.hoy-comidas > .entrada.pendiente {
+  background: color-mix(in srgb, var(--superficie) 55%, var(--pendiente-suave));
+  border-style: dashed;
+  box-shadow: none;
+}
+
+@media (min-width: 860px) {
+  .hoy-grilla { grid-template-columns: 280px minmax(0, 1fr); gap: 24px; }
+}
+
+.semana-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.semana-datos > .dato { padding: 14px 16px; }
+.semana-grafico { padding: 18px 16px 10px; margin-bottom: 16px; }
+.semana-detalle { margin-top: 0; padding: 4px 16px; border-top: 1px solid var(--borde); }
+.semana-detalle summary { padding: 10px 0; }
+
+@media (max-width: 599px) {
+  .hoy-comidas > .entrada, .hoy-comidas > .entrada:first-child { padding: 12px; }
+  .semana-datos { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .semana-datos > .dato { padding: 12px; }
+}

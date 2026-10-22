@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Qué como</title>
+  <meta name="description" content="Registro de comidas con fotos">
+  <meta name="theme-color" content="#2b7a52">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/captura.css">
+  <link rel="stylesheet" href="css/panel.css">
+  <link rel="stylesheet" href="css/cuerpo.css">
+</head>
+<body>
+  <div id="franja-demo" class="franja-demo" hidden>Modo demo: datos de ejemplo, quedan solo en este navegador</div>
+  <header class="cabecera">
+    <div class="cabecera-in">
+      <a class="marca" href="#/hoy"><img class="marca-logo" src="icons/icon.svg" alt="" width="28" height="28">Qué como</a>
+      <nav class="tabs" aria-label="Secciones">
+        <a data-ruta="hoy" href="#/hoy">Hoy</a>
+        <a data-ruta="semana" href="#/semana">Semana</a>
+        <a data-ruta="peso" href="#/peso">Peso</a>
+        <a data-ruta="perfil" href="#/perfil">Perfil</a>
+      </nav>
+      <div class="cabecera-der">
+        <span id="insignia-pendientes" class="chip chip-pendientes" hidden
+              title="Pedile a Claude «procesá» en la carpeta que-como"></span>
+        <div id="sesion" class="sesion"></div>
+      </div>
+    </div>
+  </header>
+  <main id="vista"></main>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

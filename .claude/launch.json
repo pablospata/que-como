@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "que-como",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-c", "import functools,http.server as h\nclass H(h.SimpleHTTPRequestHandler):\n    def end_headers(self):\n        self.send_header('Cache-Control','no-store')\n        super().end_headers()\nh.ThreadingHTTPServer(('127.0.0.1',8795),functools.partial(H,directory='docs')).serve_forever()"],
+      "port": 8795
+    }
+  ]
+}
