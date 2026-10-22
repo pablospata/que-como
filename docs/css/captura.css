@@ -326,3 +326,9 @@ div.cap-tira-item { cursor: default; }
 }
 
 .cap-arriba-der { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+/* cuándo se comió (anotar sin foto) */
+.cap-hoja-cuando { display: grid; grid-template-columns: 3fr 2fr; gap: 8px; }
+.cap-hoja-cuando .entrada { min-width: 0; }
+.cap-hoja-aviso { margin: 0; font-size: .85rem; color: var(--error); }
+.cap-hoja-aviso:empty { display: none; }

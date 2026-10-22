@@ -105,6 +105,10 @@ export async function montar(contenedor, params, ctx) {
   // hoja para anotar sin foto
   const hojaArea = el("textarea", { class: "entrada", rows: "4", maxlength: "1000",
     placeholder: "Qué comiste", "aria-label": "Qué comiste" });
+  // cuándo se comió: por defecto ahora, editable (para lo que se anota tarde)
+  const hojaFecha = el("input", { class: "entrada", type: "date", "aria-label": "Día" });
+  const hojaHora = el("input", { class: "entrada", type: "time", "aria-label": "Hora" });
+  const hojaAviso = el("p", { class: "cap-hoja-aviso", "aria-live": "polite" });
   const hojaGuardar = el("button", { class: "btn btn-primario", type: "button", onclick: guardarTexto }, "Guardar");
   const hoja = el("div", { class: "cap-hoja-fondo", hidden: true, onclick: (e) => { if (e.target === hoja) cerrarHojaTexto(); } },
     el("div", { class: "cap-hoja", role: "dialog", "aria-modal": "true", "aria-label": "Anotar sin foto" },
@@ -112,6 +116,8 @@ export async function montar(contenedor, params, ctx) {
         el("button", { class: "btn-icono", type: "button", "aria-label": "Cerrar", onclick: cerrarHojaTexto }, icono("cerrar", 22)),
       ),
       hojaArea,
+      el("div", { class: "cap-hoja-cuando" }, hojaFecha, hojaHora),
+      hojaAviso,
       el("div", { class: "cap-hoja-pie" },
         hojaGuardar,
       ),
@@ -312,8 +318,13 @@ export async function montar(contenedor, params, ctx) {
   // ------------------------------------------------------------ texto sin foto
 
   function abrirHojaTexto() {
+    const ahora = new Date();
     hoja.hidden = false;
     hojaArea.value = "";
+    hojaFecha.value = hoyISO();
+    hojaFecha.max = hoyISO();
+    hojaHora.value = horaDe(isoConZona(ahora));
+    hojaAviso.textContent = "";
     hojaArea.focus();
   }
 
@@ -328,10 +339,11 @@ export async function montar(contenedor, params, ctx) {
       hojaArea.focus();
       return;
     }
+    const cuando = momentoElegido();
+    if (!cuando) return;
     hojaGuardar.disabled = true;
     try {
-      const ahora = new Date();
-      await cola.encolar({ tipo: "texto", texto, grupo: nuevoGrupo(ahora), tomada: isoConZona(ahora) });
+      await cola.encolar({ tipo: "texto", texto, grupo: nuevoGrupo(cuando), tomada: isoConZona(cuando) });
       cerrarHojaTexto();
       const r = await vaciarCola();
       if (r && r.detenida) ctx.toast("Anotado, queda en cola", { tipo: "info" });
@@ -341,6 +353,20 @@ export async function montar(contenedor, params, ctx) {
     } finally {
       hojaGuardar.disabled = false;
     }
+  }
+
+  /** Fecha y hora elegidas en la hoja (vacías = ahora). Null y aviso si es a futuro. */
+  function momentoElegido() {
+    const ahora = new Date();
+    if (!hojaFecha.value && !hojaHora.value) return ahora;
+    const [a, m, d] = (hojaFecha.value || hoyISO()).split("-").map(Number);
+    const [h, min] = (hojaHora.value || horaDe(isoConZona(ahora))).split(":").map(Number);
+    const cuando = new Date(a, m - 1, d, h, min, ahora.getSeconds());
+    if (cuando > ahora) {
+      hojaAviso.textContent = "La fecha y hora no pueden ser posteriores a ahora.";
+      return null;
+    }
+    return cuando;
   }
 
   // ------------------------------------------------------------ cola
