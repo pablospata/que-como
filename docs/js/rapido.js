@@ -8,7 +8,7 @@ let botonPeso = null;
 /** Crea los botones una vez. ctx: {datos, navegar, toast, alGuardarPeso}. */
 export function montarRapido(ctx) {
   botonPeso = el("button", { class: "rapido-btn rapido-peso", type: "button",
-    "aria-label": "Cargar peso", title: "Cargar peso", onclick: () => abrirPeso(ctx) }, icono("balanza", 22));
+    "aria-label": "Cargar peso", title: "Cargar peso", onclick: () => abrirPeso(ctx) }, icono("pesa", 30));
   const botonFoto = el("button", { class: "rapido-btn rapido-foto", type: "button",
     "aria-label": "Sacar foto", title: "Sacar foto", onclick: () => ctx.navegar("captura/abrir") }, icono("camara", 26));
   caja = el("div", { class: "rapido" }, botonPeso, botonFoto);

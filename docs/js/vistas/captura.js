@@ -3,6 +3,7 @@
 import { el, icono, mensajeError, nuevoGrupo, isoConZona, hoyISO, horaDe } from "../util.js";
 import { comprimir, fechaDeArchivo } from "../imagen.js";
 import * as cola from "../cola.js";
+import { botonTema, soltarBotonTema } from "../tema.js";
 
 const INACTIVIDAD_MS = 60000;
 
@@ -49,10 +50,14 @@ export async function montar(contenedor, params, ctx) {
     class: "visualmente-oculto", tabindex: "-1", "aria-hidden": "true" });
 
   const zonaConectar = el("div", { class: "cap-conectar" });
+  const btnTema = botonTema();
+  limpiezas.push(() => soltarBotonTema(btnTema));
   const arriba = el("div", { class: "cap-arriba" },
     zonaConectar,
-    el("button", { class: "btn-icono cap-ir-panel", type: "button", "aria-label": "Ir al panel",
-      title: "Ir al panel", onclick: () => ctx.navegar("hoy") }, icono("panel", 22)),
+    el("div", { class: "cap-arriba-der" },
+      btnTema,
+      el("button", { class: "btn-icono cap-ir-panel", type: "button", "aria-label": "Ir al panel",
+        title: "Ir al panel", onclick: () => ctx.navegar("hoy") }, icono("panel", 22))),
   );
 
   const btnCamara = el("button", { class: "cap-disparador", type: "button", "aria-label": "Sacar foto",

@@ -285,7 +285,7 @@ body.modo-captura .vista { max-width: none; padding: 0; }
 .rapido-btn:active { transform: scale(.94); }
 .rapido-foto { width: 60px; height: 60px; border: 0; background: var(--acento); color: var(--acento-texto); }
 .rapido-foto:hover { background: color-mix(in srgb, var(--acento) 88%, black); }
-.rapido-peso { width: 46px; height: 46px; border: 1px solid var(--borde); background: var(--superficie); color: var(--texto-2); }
+.rapido-peso { width: 54px; height: 54px; border: 1px solid var(--borde); background: var(--superficie); color: var(--texto-2); }
 .rapido-peso:hover { color: var(--texto); }
 
 /* que el final de cada pantalla no quede tapado por los botones */

@@ -324,3 +324,5 @@ div.cap-tira-item { cursor: default; }
   .cap-disparador { width: 112px; }
   .cap-mini { width: 120px; }
 }
+
+.cap-arriba-der { display: flex; align-items: center; gap: 4px; margin-left: auto; }
