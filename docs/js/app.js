@@ -1,6 +1,7 @@
 // Arranque de la página: rutas (#/...), sesión, insignia de pendientes y montaje de vistas.
 import { obtenerDatos, esDemo } from "./datos.js";
 import { el, icono, toast, mensajeError } from "./util.js";
+import { montarRapido, actualizarRapido } from "./rapido.js";
 
 const VISTAS = ["captura", "hoy", "semana", "peso", "perfil"];
 const REVISAR_PENDIENTES_MS = 120000;
@@ -110,6 +111,7 @@ async function mostrar() {
     desmontar = null;
   }
   document.body.classList.toggle("modo-captura", vista === "captura");
+  actualizarRapido(vista);
   for (const a of document.querySelectorAll(".tabs a")) {
     a.classList.toggle("activa", a.dataset.ruta === vista);
     if (a.dataset.ruta === vista) a.setAttribute("aria-current", "page");
@@ -152,6 +154,11 @@ async function iniciar() {
   document.getElementById("franja-demo").hidden = !esDemo();
   pintarSesion();
   pintarTema();
+  montarRapido({
+    datos, navegar, toast: (t, o) => toast(t, o),
+    // las vistas que muestran el peso se vuelven a montar con el dato nuevo
+    alGuardarPeso: () => { if (["hoy", "semana", "perfil"].includes(leerRuta().vista)) mostrar(); },
+  });
   document.getElementById("tema").addEventListener("click", alternarTema);
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", pintarTema);
   window.addEventListener("hashchange", mostrar);

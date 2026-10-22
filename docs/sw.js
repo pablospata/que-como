@@ -3,7 +3,7 @@
 // lo que quedó en caché. Solo pedidos GET del mismo origen: nunca toca la API de Google
 // (googleapis.com, accounts.google.com, gstatic.com) ni otros orígenes.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `quecomo-shell-${VERSION}`;
 const ESPERA_RED_MS = 4000;   // con señal mala, a los 4 s se usa la caché (si la hay)
 
@@ -19,6 +19,7 @@ const SHELL = [
   "css/cuerpo.css",
   "js/app.js",
   "js/util.js",
+  "js/rapido.js",
   "js/datos.js",
   "js/demo.js",
   "js/drive.js",

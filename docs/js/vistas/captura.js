@@ -494,6 +494,13 @@ export async function montar(contenedor, params, ctx) {
   refrescarTira();
   vaciarCola();
 
+  // #/captura/abrir (el botón flotante del panel): abre la cámara directo. Si el navegador no lo
+  // deja (pasó mucho desde el toque), queda la pantalla de la cámara a un toque.
+  if (params[0] === "abrir") {
+    history.replaceState(null, "", "#/captura");
+    abrirCamara("nueva");
+  }
+
   return () => {
     vivo = false;
     clearTimeout(temporizador);
