@@ -36,6 +36,19 @@ function leerDecimal(texto) {
   return Number(t);
 }
 
+/** Valida el peso escrito y la fecha. → {kg} (redondeado a 2 decimales) o {campo, error}. */
+function validarPeso(textoKg, fecha, hoy) {
+  const kg = leerDecimal(textoKg);
+  if (kg == null) return { campo: "kg", error: "Escribí el peso en kilos, por ejemplo 84,3." };
+  if (kg < 30 || kg > 300) return { campo: "kg", error: "El peso tiene que estar entre 30 y 300 kg." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || "")) return { campo: "fecha", error: "Elegí una fecha." };
+  if (fecha > hoy) return { campo: "fecha", error: "La fecha no puede ser posterior a hoy." };
+  return { kg: Math.round(kg * 100) / 100 };
+}
+
+/** 84.25 → "84,25" (para volver a mostrarlo en un campo). */
+const kgATexto = (kg) => String(kg).replace(".", ",");
+
 function leerRango() {
   try {
     const v = localStorage.getItem(CLAVE_RANGO);
@@ -102,7 +115,9 @@ export async function montar(contenedor, params, ctx) {
     rango: leerRango(),
     verTodos: false,
     ocupado: false,
+    editando: null,   // fecha del pesaje que se está corrigiendo en la lista
   };
+  const accionesLista = { borrar, alternar, editar, cancelarEdicion, corregir };
 
   // --- formulario
   const entradaKg = el("input", { id: "peso-kg", type: "text", inputmode: "decimal", autocomplete: "off",
@@ -169,25 +184,72 @@ export async function montar(contenedor, params, ctx) {
     pintarStats(cajaStats, estado, hoy);
     dibujar();
     pintarBalance(cajaBalance, estado, hoy);
-    pintarLista(cajaLista, estado, { borrar, alternar });
+    pintarLista(cajaLista, estado, accionesLista);
   }
 
   function alternar() {
     estado.verTodos = !estado.verTodos;
-    pintarLista(cajaLista, estado, { borrar, alternar });
+    pintarLista(cajaLista, estado, accionesLista);
+  }
+
+  function editar(fecha) {
+    if (estado.ocupado) return;
+    estado.editando = fecha;
+    pintarLista(cajaLista, estado, accionesLista);
+    const kg = cajaLista.querySelector(".peso-fila-form input");
+    if (kg) { kg.focus(); kg.select(); }
+  }
+
+  function cancelarEdicion() {
+    const fecha = estado.editando;
+    estado.editando = null;
+    pintarLista(cajaLista, estado, accionesLista);
+    cajaLista.querySelector(`.peso-editar[data-fecha="${fecha}"]`)?.focus();
+  }
+
+  /**
+   * Corrige un pesaje de la lista (kg y fecha). Lee peso.json justo antes de escribir. Si la
+   * fecha nueva ya tenía un pesaje, lo reemplaza. → {campo, error} si algo está mal escrito,
+   * {fallo: true} si no se pudo guardar, null si salió bien.
+   */
+  async function corregir(viejo, textoKg, fechaNueva) {
+    if (estado.ocupado) return { fallo: true };
+    const v = validarPeso(textoKg, fechaNueva, hoy);
+    if (v.error) return v;
+    if (fechaNueva === viejo.fecha && v.kg === viejo.kg) { cancelarEdicion(); return null; }
+    estado.ocupado = true;
+    try {
+      const actual = await ctx.datos.leerPeso();
+      const todos = (actual && actual.registros) || [];
+      const previo = todos.find((r) => r.fecha === viejo.fecha) || {};
+      const reemplazo = fechaNueva !== viejo.fecha && todos.some((r) => r.fecha === fechaNueva);
+      const regs = todos.filter((r) => r.fecha !== viejo.fecha && r.fecha !== fechaNueva);
+      regs.push({ ...previo, fecha: fechaNueva, kg: v.kg });
+      regs.sort((a, b) => a.fecha.localeCompare(b.fecha));
+      await ctx.datos.guardarPeso({ ...(actual || {}), version: 1, registros: regs });
+      estado.regs = regs;
+      estado.editando = null;
+      ctx.toast(reemplazo
+        ? `Peso del ${formatoFecha(fechaNueva)} reemplazado: ${num(v.kg, 1)} kg`
+        : `Peso corregido: ${num(v.kg, 1)} kg`, { tipo: "ok" });
+      pintar();
+      return null;
+    } catch (e) {
+      ctx.toast(mensajeError(e), { tipo: "error" });
+      return { fallo: true };
+    } finally {
+      estado.ocupado = false;
+    }
   }
 
   async function guardar(ev) {
     ev.preventDefault();
     if (estado.ocupado) return;
-    const kg = leerDecimal(entradaKg.value);
     const fecha = entradaFecha.value;
-    if (kg == null) return marcarError(entradaKg, "Escribí el peso en kilos, por ejemplo 84,3.");
-    if (kg < 30 || kg > 300) return marcarError(entradaKg, "El peso tiene que estar entre 30 y 300 kg.");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return marcarError(entradaFecha, "Elegí una fecha.");
-    if (fecha > hoy) return marcarError(entradaFecha, "La fecha no puede ser posterior a hoy.");
+    const v = validarPeso(entradaKg.value, fecha, hoy);
+    if (v.error) return marcarError(v.campo === "kg" ? entradaKg : entradaFecha, v.error);
     limpiarError();
-    const valor = Math.round(kg * 100) / 100;
+    const valor = v.kg;
     estado.ocupado = true;
     botonGuardar.disabled = true;
     try {
@@ -222,6 +284,7 @@ export async function montar(contenedor, params, ctx) {
       const regs = ((actual && actual.registros) || []).filter((r) => r.fecha !== fecha);
       await ctx.datos.guardarPeso({ ...(actual || {}), version: 1, registros: regs });
       estado.regs = regs;
+      if (estado.editando === fecha) estado.editando = null;
       ctx.toast(`Peso del ${formatoFecha(fecha)} borrado`, { tipo: "ok" });
       pintar();
     } catch (e) {
@@ -363,7 +426,46 @@ function pintarBalance(caja, estado, hoy) {
 
 // ---------------------------------------------------------------- lista
 
-function pintarLista(caja, estado, { borrar, alternar }) {
+/** Un pesaje de la lista convertido en campos (kg y fecha) con Guardar y Cancelar. */
+function filaEdicion(r, { corregir, cancelarEdicion }) {
+  const kg = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", class: "num",
+    value: kgATexto(r.kg), "aria-label": "Peso (kg)" });
+  const fecha = el("input", { type: "date", value: r.fecha, max: hoyISO(), required: true, "aria-label": "Fecha" });
+  const error = el("p", { class: "peso-fila-error", "aria-live": "polite" });
+  const botones = [
+    el("button", { type: "submit", class: "btn btn-primario btn-chico" }, "Guardar"),
+    el("button", { type: "button", class: "btn btn-chico", onclick: cancelarEdicion }, "Cancelar"),
+  ];
+  const limpiar = () => {
+    error.textContent = "";
+    kg.removeAttribute("aria-invalid");
+    fecha.removeAttribute("aria-invalid");
+  };
+  const form = el("form", { class: "peso-fila-form", novalidate: true, onsubmit: async (e) => {
+    e.preventDefault();
+    limpiar();
+    for (const b of botones) b.disabled = true;
+    const r2 = await corregir(r, kg.value, fecha.value);
+    if (!form.isConnected) return;   // salió bien: la lista ya se repintó
+    for (const b of botones) b.disabled = false;
+    if (r2 && r2.error) {
+      const campo = r2.campo === "kg" ? kg : fecha;
+      campo.setAttribute("aria-invalid", "true");
+      error.textContent = r2.error;
+      campo.focus();
+    }
+  } },
+    el("div", { class: "peso-fila-campos" }, kg, fecha),
+    error,
+    el("div", { class: "peso-fila-botones" }, botones));
+  form.addEventListener("input", () => { if (error.textContent) limpiar(); });
+  form.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); cancelarEdicion(); }
+  });
+  return el("li", { class: "peso-fila editando" }, form);
+}
+
+function pintarLista(caja, estado, { borrar, alternar, editar, cancelarEdicion, corregir }) {
   const regs = [...estado.regs].reverse();
   caja.replaceChildren(el("h2", {}, "Pesajes"));
   if (!regs.length) {
@@ -374,6 +476,10 @@ function pintarLista(caja, estado, { borrar, alternar }) {
   const anioActual = hoyISO().slice(0, 4);
   const lista = el("ul", { class: "peso-filas" });
   visibles.forEach((r, i) => {
+    if (r.fecha === estado.editando) {
+      lista.append(filaEdicion(r, { corregir, cancelarEdicion }));
+      return;
+    }
     const anterior = regs[i + 1];
     const dif = anterior ? r.kg - anterior.kg : null;
     const etiqueta = `Borrar el peso del ${formatoFecha(r.fecha)}`;
@@ -399,11 +505,20 @@ function pintarLista(caja, estado, { borrar, alternar }) {
         }, 4000);
       },
     }, icono("borrar", 18));
-    lista.append(el("li", { class: "peso-fila" },
+    const botonEditar = el("button", {
+      type: "button", class: "btn-icono peso-editar", dataset: { fecha: r.fecha },
+      "aria-label": `Corregir el peso del ${formatoFecha(r.fecha)}`, title: "Corregir",
+      onclick: () => editar(r.fecha),
+    }, icono("editar", 18));
+    lista.append(el("li", {
+      class: "peso-fila",
+      // tocar la fila (fuera de los botones) también abre la corrección
+      onclick: (e) => { if (!e.target.closest("button")) editar(r.fecha); },
+    },
       el("span", { class: "peso-fila-fecha" }, formatoFecha(r.fecha, { anio: r.fecha.slice(0, 4) !== anioActual })),
       el("span", { class: "peso-fila-kg num" }, `${num(r.kg, 1)} kg`),
       el("span", { class: "peso-fila-dif num terciario" }, dif == null ? "" : conSigno(dif)),
-      boton));
+      el("span", { class: "peso-fila-acciones" }, botonEditar, boton)));
   });
   caja.append(lista);
   if (regs.length > RECIENTES) {

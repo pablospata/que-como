@@ -273,6 +273,8 @@ crearTexto(texto, {grupo, tomada})       // → {id}; la nota = el texto
 pendientes()                 // → [{grupo, tomada, nota, piezas:[{id, tipo:'foto'|'texto', nombre}]}]
                              //   estado = pendiente, de más vieja a más nueva
 cambiarNota(grupo, nota)     // actualiza description de todas las piezas del grupo
+cambiarMomento(grupo, tomada) // appProperties.tomada (ISO con zona, o un Date local) en todas
+                             //   las piezas del grupo; el grupo no cambia
 descartar(grupo)             // estado = descartada en todas las piezas
 urlFoto(id)                  // → URL usable en <img> (object URL en caché de memoria)
 // registro
@@ -548,3 +550,17 @@ ajeno.)
   captura con `agregada: true`, `comida` (la registrada), `nuevas` (ids pendientes) y `aviso`.
   Claude estima la comida entera; `registrar` la reemplaza conservando `fecha` y `hora`. El
   redondeo de gasto, meta y promedios en Python es igual al de `Math.round` de la página.
+- **[edición]** Corregir lo cargado por error (comida.js, hoy.js, peso.js, drive.js, demo.js):
+  - **Comida procesada:** "Editar" también cambia día, hora y nota. Cambiar solo eso **no** pone
+    `editada: true` (eso queda para items, título o tipo). Con fecha u hora nuevas, el registro se
+    reordena por `fecha` + `hora`; si la comida pasa a otro día, el aviso dice "Movida al …". Si
+    cambia la nota, además se llama `cambiarNota(comida.id, nota)` para que las piezas digan lo
+    mismo (qc.py saca la nota de las piezas al re-procesar); si eso falla, el registro queda igual.
+  - **Captura pendiente:** tocar la hora abre día y hora; guarda con `cambiarMomento(grupo,
+    tomada)`, nueva en la API (las dos implementaciones; parchea solo `tomada`, sin las piezas de
+    la papelera). Como qc.py usa la `tomada` más temprana, alcanza para que se anote en el día
+    nuevo. Ojo: una pieza del mismo grupo que suba después (cola del celu) trae su `tomada` vieja.
+  - **Peso:** cada pesaje de la lista se corrige en el lugar (kg y fecha), con las mismas reglas
+    que el formulario; lee `peso.json` justo antes de escribir y, si la fecha nueva ya tenía
+    pesaje, lo reemplaza.
+  - Día y hora (o fecha) posteriores a ahora se rechazan con un aviso en línea.

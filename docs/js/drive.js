@@ -450,6 +450,13 @@ async function buscarPieza(pieza) {
   return p || null;
 }
 
+/** "2026-10-22T13:40:12-03:00" tal cual; un Date → ISO local con zona. Otra cosa: error. */
+function tomadaValida(tomada) {
+  if (tomada instanceof Date && !Number.isNaN(tomada.getTime())) return isoConZona(tomada);
+  if (typeof tomada === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d([+-]\d\d:\d\d|Z)$/.test(tomada)) return tomada;
+  throw errorDatos("drive", "La fecha y hora no son válidas.");
+}
+
 /** appProperties de una pieza nueva; `pieza` (id fijo de la cola) solo si vino. */
 function propiedadesPieza(quecomo, { grupo, tomada, pieza }) {
   const ap = { quecomo, grupo, tomada, estado: "pendiente" };
@@ -527,6 +534,17 @@ export async function pendientes() {
 export async function cambiarNota(grupo, nota) {
   const piezas = await piezasDe(grupo);
   await Promise.all(piezas.map((p) => parchear(p.id, { description: nota || "" })));
+}
+
+/**
+ * Cambia el momento de una captura: appProperties.tomada de todas las piezas del grupo (ISO con
+ * zona, o un Date local). El grupo no cambia (es solo un id); qc.py toma la tomada más temprana.
+ */
+export async function cambiarMomento(grupo, tomada) {
+  const valor = tomadaValida(tomada);
+  const piezas = await piezasDe(grupo);
+  // PATCH mezcla las claves de appProperties: solo cambia tomada.
+  await Promise.all(piezas.map((p) => parchear(p.id, { appProperties: { tomada: valor } })));
 }
 
 export async function descartar(grupo) {

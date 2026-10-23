@@ -233,6 +233,18 @@ export async function cambiarNota(grupo, nota) {
   guardar();
 }
 
+/** Como en drive.js: cambia la tomada de todas las piezas del grupo (ISO con zona o Date). */
+export async function cambiarMomento(grupo, tomada) {
+  const valor = tomada instanceof Date ? isoConZona(tomada) : String(tomada || "");
+  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d([+-]\d\d:\d\d|Z)$/.test(valor)) {
+    throw errorDatos("drive", "La fecha y hora no son válidas.");
+  }
+  const d = cargar();
+  await pausa();
+  for (const p of d.piezas) if (p.grupo === grupo) p.tomada = valor;
+  guardar();
+}
+
 export async function descartar(grupo) {
   const d = cargar();
   await pausa();

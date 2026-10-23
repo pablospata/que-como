@@ -33,7 +33,7 @@ export async function montar(contenedor, params, ctx) {
     try { metaP = finito(metaProteina(perfil, pesoDia)); } catch { metaP = null; }
 
     const lista = [
-      ...resumen.lista.map((c) => ({ hora: c.hora || "", orden: 0, nodo: () => tarjetaComida(c, ctx, { alCambiar: refrescar }) })),
+      ...resumen.lista.map((c) => ({ hora: c.hora || "", orden: 0, nodo: () => tarjetaComida(c, ctx, { alCambiar: refrescar, dia: fecha }) })),
       ...pendDia.map((p) => ({ hora: p.tomada ? horaDe(p.tomada) : "", orden: 1, nodo: () => tarjetaPendiente(p, ctx, { alCambiar: refrescar }) })),
     ].sort((a, b) => a.hora.localeCompare(b.hora) || a.orden - b.orden);
 

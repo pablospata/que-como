@@ -1,6 +1,6 @@
 // Piezas compartidas del panel: tarjeta de comida procesada, tarjeta de captura pendiente,
 // visor de fotos, edición a mano, pedido de revisión y diálogo de confirmación.
-import { el, icono, horaDe, isoConZona, num, mensajeError } from "../util.js";
+import { el, icono, horaDe, isoConZona, num, mensajeError, hoyISO, formatoFecha } from "../util.js";
 
 export const TIPOS = {
   desayuno: "Desayuno",
@@ -63,6 +63,17 @@ export function totales(items) {
   return t;
 }
 
+/** ¿Los items leídos del formulario difieren de los originales (con el mismo redondeo)? */
+function itemsCambiaron(antes, despues) {
+  if (antes.length !== despues.length) return true;
+  const redondeo = (k, x) => (k === "kcal" ? Math.round(x) : Math.round(x * 10) / 10);
+  return despues.some((it, i) => {
+    const a = antes[i] || {};
+    if (String(a.nombre ?? "").trim() !== it.nombre || String(a.porcion ?? "").trim() !== it.porcion) return true;
+    return MACROS.some(([k]) => redondeo(k, Number(a[k]) || 0) !== it[k]);
+  });
+}
+
 /** Entero tal cual; con decimales, uno solo ("7,5"). */
 const numItem = (n) => (Number.isInteger(Number(n)) ? num(n) : num(n, 1));
 
@@ -80,6 +91,53 @@ function iconoPuntos() {
 function enUso(boton, ocupado) {
   boton.disabled = ocupado;
   boton.setAttribute("aria-busy", ocupado ? "true" : "false");
+}
+
+// ---------------------------------------------------------------- día y hora
+
+const MSJ_FUTURO = "La fecha y hora no pueden ser posteriores a ahora.";
+
+/** "2026-10-22" + "13:40" → Date local; null si falta algo. */
+function momentoDe(fecha, hora, segundos = 0) {
+  if (!/^\d{4}-\d\d-\d\d$/.test(fecha || "") || !/^\d\d:\d\d/.test(hora || "")) return null;
+  const [a, m, d] = fecha.split("-").map(Number);
+  const [h, min] = hora.split(":").map(Number);
+  return new Date(a, m - 1, d, h, min, segundos);
+}
+
+/** Campos de día y hora (en el celu, uno abajo del otro). conEtiquetas: con "Día" y "Hora" visibles. */
+function camposCuando(fecha, hora, { conEtiquetas = false } = {}) {
+  const dia = el("input", { type: "date", class: "entrada-texto", value: fecha || "", max: hoyISO(),
+    required: true, "aria-label": "Día" });
+  const hh = el("input", { type: "time", class: "entrada-texto", value: hora || "", required: true,
+    "aria-label": "Hora" });
+  const caja = el("div", { class: "campos-cuando" },
+    conEtiquetas ? el("label", { class: "campo" }, el("span", {}, "Día"), dia) : dia,
+    conEtiquetas ? el("label", { class: "campo" }, el("span", {}, "Hora"), hh) : hh);
+  return { caja, dia, hora: hh };
+}
+
+/**
+ * Lee día y hora de los campos. → Date, o null y el aviso escrito (falta algo o es a futuro).
+ * segundos: los de la hora original (si el resultado queda a futuro por eso, se usa ahora).
+ */
+function leerCuando(campos, aviso, segundos = 0) {
+  const ahora = new Date();
+  const fecha = campos.dia.value;
+  const hora = campos.hora.value.slice(0, 5);
+  campos.dia.classList.toggle("invalido", !fecha);
+  campos.hora.classList.toggle("invalido", !!fecha && !hora);
+  if (!fecha) { aviso.textContent = "Elegí el día."; campos.dia.focus(); return null; }
+  if (!hora) { aviso.textContent = "Elegí la hora."; campos.hora.focus(); return null; }
+  if (momentoDe(fecha, hora) > ahora) {
+    aviso.textContent = MSJ_FUTURO;
+    campos.dia.classList.add("invalido");
+    campos.hora.classList.add("invalido");
+    return null;
+  }
+  aviso.textContent = "";
+  const cuando = momentoDe(fecha, hora, segundos);
+  return cuando > ahora ? ahora : cuando;
 }
 
 // ---------------------------------------------------------------- fotos perezosas
@@ -225,13 +283,18 @@ export function confirmar({ titulo, texto = "", si = "Sí", no = "Cancelar", pel
 
 // ---------------------------------------------------------------- escrituras al registro
 
-async function cambiarComida(ctx, id, fn) {
+/** Cambia una comida del registro. ordenar: después vuelve a ordenar por fecha y hora. */
+async function cambiarComida(ctx, id, fn, { ordenar = false } = {}) {
   let encontrada = false;
   await ctx.datos.actualizarRegistro((reg) => {
     const c = (reg.comidas || []).find((x) => x.id === id);
     if (c) {
       encontrada = true;
       fn(c);
+      if (ordenar) {
+        const clave = (x) => `${x.fecha || ""} ${x.hora || ""}`;
+        reg.comidas.sort((a, b) => clave(a).localeCompare(clave(b)));
+      }
     }
     return reg;
   });
@@ -254,8 +317,9 @@ const esControl = (t) => !!t.closest("button, a, input, textarea, select, label,
  * Una comida del registro: foto, hora · título, kcal; los items en una lista liviana.
  * Al desplegarla (clic o ⋯) aparecen la tabla con P/C/G y las acciones.
  * opciones.alCambiar(): se llama después de guardar algo (la vista recarga y repinta).
+ * opciones.dia: el día que muestra la vista (si la comida pasa a otro día, se avisa).
  */
-export function tarjetaComida(comida, ctx, { alCambiar } = {}) {
+export function tarjetaComida(comida, ctx, { alCambiar, dia } = {}) {
   const entrada = el("article", { class: "entrada comida", dataset: { id: comida.id } });
   const fotos = Array.isArray(comida.fotos) ? comida.fotos : [];
   const items = Array.isArray(comida.items) ? comida.items : [];
@@ -399,6 +463,17 @@ export function tarjetaComida(comida, ctx, { alCambiar } = {}) {
     const titulo = el("input", { class: "entrada-texto", value: comida.titulo || "", maxlength: 120 });
     const tipo = el("select", { class: "entrada-texto" },
       Object.entries(TIPOS).map(([v, t]) => el("option", { value: v, selected: v === comida.tipo }, t)));
+    const cuando = camposCuando(comida.fecha, comida.hora, { conEtiquetas: true });
+    const avisoCuando = el("p", { class: "edicion-aviso", "aria-live": "polite" });
+    const nota = el("textarea", { class: "entrada-texto", rows: 2, maxlength: 500 });
+    nota.value = comida.nota || "";
+    for (const c of [cuando.dia, cuando.hora]) {
+      c.addEventListener("input", () => {
+        avisoCuando.textContent = "";
+        cuando.dia.classList.remove("invalido");
+        cuando.hora.classList.remove("invalido");
+      });
+    }
 
     const cabezaFilas = el("div", { class: "edicion-fila edicion-encabezado", "aria-hidden": "true" },
       el("span", {}, "Alimento"), el("span", {}, "Porción"), el("span", { class: "n" }, "kcal"),
@@ -451,8 +526,11 @@ export function tarjetaComida(comida, ctx, { alCambiar } = {}) {
     items.forEach((it) => filas.append(filaItem(it)));
     filas.addEventListener("input", recalcular);
 
-    const form = el("form", { class: "form-edicion", onsubmit: async (e) => {
+    const form = el("form", { class: "form-edicion", novalidate: true, onsubmit: async (e) => {
       e.preventDefault();
+      if (!leerCuando(cuando, avisoCuando)) return;
+      const nuevaFecha = cuando.dia.value;
+      const nuevaHora = cuando.hora.value.slice(0, 5);
       const nuevos = leerFilas();
       if (!nuevos.length) {
         ctx.toast("Tiene que quedar al menos un item. Para sacar la comida entera, usá Borrar.", { tipo: "error" });
@@ -466,16 +544,39 @@ export function tarjetaComida(comida, ctx, { alCambiar } = {}) {
         ctx.toast("Hay un número que no entiendo: usá solo cifras (con coma para decimales).", { tipo: "error" });
         return;
       }
+      const nuevoTitulo = titulo.value.trim() || comida.titulo || "";
+      const nuevaNota = nota.value.trim();
+      // editada = números (o título/tipo) tocados a mano; día, hora y nota no cuentan
+      const cambioItems = itemsCambiaron(items, nuevos) || nuevoTitulo !== (comida.titulo || "") ||
+        tipo.value !== comida.tipo;
+      const cambioMomento = nuevaFecha !== comida.fecha || nuevaHora !== comida.hora;
+      const cambioNota = nuevaNota !== (comida.nota || "").trim();
+      if (!cambioItems && !cambioMomento && !cambioNota) { vista(); return; }
       for (const b of form.querySelectorAll("button")) enUso(b, true);
       try {
         await cambiarComida(ctx, comida.id, (c) => {
-          c.items = nuevos;
-          Object.assign(c, totales(nuevos));
-          c.titulo = titulo.value.trim() || c.titulo;
-          c.tipo = tipo.value;
-          c.editada = true;
-        });
-        ctx.toast("Comida corregida.", { tipo: "ok" });
+          if (cambioItems) {
+            c.items = nuevos;
+            Object.assign(c, totales(nuevos));
+            c.titulo = nuevoTitulo || c.titulo;
+            c.tipo = tipo.value;
+            c.editada = true;
+          }
+          if (cambioMomento) { c.fecha = nuevaFecha; c.hora = nuevaHora; }
+          if (cambioNota) c.nota = nuevaNota;
+        }, { ordenar: cambioMomento });
+        const movida = cambioMomento && dia && nuevaFecha !== dia;
+        ctx.toast(movida ? `Movida al ${formatoFecha(nuevaFecha)}`
+          : cambioItems ? "Comida corregida." : "Cambios guardados.", { tipo: "ok" });
+        if (cambioNota) {
+          // qc.py vuelve a sacar la nota de las piezas al re-procesar: tienen que decir lo mismo
+          try {
+            await ctx.datos.cambiarNota(comida.id, nuevaNota);
+          } catch (err) {
+            ctx.toast(`La nota quedó en el registro, pero no en las fotos del Drive: ${mensajeError(err)}`,
+              { tipo: "error", ms: 6000 });
+          }
+        }
         await alCambiar?.();
       } catch (err) {
         ctx.toast(mensajeError(err), { tipo: "error" });
@@ -485,6 +586,9 @@ export function tarjetaComida(comida, ctx, { alCambiar } = {}) {
       el("div", { class: "edicion-cabeza" },
         el("label", { class: "campo" }, el("span", {}, "Título"), titulo),
         el("label", { class: "campo" }, el("span", {}, "Tipo"), tipo)),
+      cuando.caja,
+      avisoCuando,
+      el("label", { class: "campo" }, el("span", {}, "Nota"), nota),
       cabezaFilas,
       filas,
       el("div", { class: "edicion-pie" },
@@ -498,7 +602,7 @@ export function tarjetaComida(comida, ctx, { alCambiar } = {}) {
       el("div", { class: "entrada-acciones" },
         el("button", { type: "submit", class: "btn btn-primario btn-chico" }, "Guardar"),
         el("button", { type: "button", class: "btn-texto", onclick: vista }, "Cancelar"),
-        el("span", { class: "ayuda" }, "Los totales son la suma de los items. Queda marcada como editada.")));
+        el("span", { class: "ayuda" }, "Los totales son la suma de los items.")));
     form.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.stopPropagation(); vista(); }
     });
@@ -548,6 +652,9 @@ export function tarjetaPendiente(captura, ctx, { alCambiar } = {}) {
   const nota = captura.nota || "";
   const entrada = el("article", { class: "entrada pendiente", dataset: { grupo: captura.grupo } });
 
+  const tomada = captura.tomada || "";
+  const hora = tomada ? horaDe(tomada) : "";
+
   function vista() {
     entrada.replaceChildren(
       miniatura(fotos, ctx, "Sin procesar", { pendiente: true }),
@@ -555,7 +662,9 @@ export function tarjetaPendiente(captura, ctx, { alCambiar } = {}) {
         el("div", { class: "entrada-linea" },
           el("div", { class: "entrada-titulos" },
             el("div", { class: "entrada-meta" },
-              el("span", { class: "num" }, captura.tomada ? horaDe(captura.tomada) : ""),
+              el("button", { type: "button", class: "momento-editable num", title: "Cambiar día y hora",
+                "aria-label": `Cambiar día y hora${hora ? ` (${hora})` : ""}`, "aria-expanded": "false",
+                onclick: editarMomento }, hora || "hora"),
               el("span", { class: "marca-pendiente", title: "Todavía no suma. Se estima cuando le pedís a Claude «procesá»." }, "pendiente")),
             el("button", { type: "button", class: `nota-editable${nota ? "" : " vacia"}`,
               title: "Cambiar la nota", onclick: editarNota }, nota || "Agregar una nota")),
@@ -591,6 +700,49 @@ export function tarjetaPendiente(captura, ctx, { alCambiar } = {}) {
     entrada.querySelector(".nota-editable").replaceWith(campo);
     campo.focus();
     campo.setSelectionRange(campo.value.length, campo.value.length);
+  }
+
+  function editarMomento() {
+    const abierto = entrada.querySelector(".form-momento");
+    if (abierto) { abierto.querySelector("input")?.focus(); return; }
+    const fecha0 = tomada.slice(0, 10);
+    const segundos0 = Number(tomada.slice(17, 19)) || 0;
+    const campos = camposCuando(fecha0 || hoyISO(), hora);
+    const aviso = el("p", { class: "edicion-aviso", "aria-live": "polite" });
+    const boton = entrada.querySelector(".momento-editable");
+    const cerrar = () => vista();
+    const form = el("form", { class: "form-momento", novalidate: true, onsubmit: async (e) => {
+      e.preventDefault();
+      const cuando = leerCuando(campos, aviso, segundos0);
+      if (!cuando) return;
+      if (campos.dia.value === fecha0 && campos.hora.value.slice(0, 5) === hora) { cerrar(); return; }
+      for (const b of form.querySelectorAll("button")) enUso(b, true);
+      try {
+        await ctx.datos.cambiarMomento(captura.grupo, isoConZona(cuando));
+        const nuevaFecha = isoConZona(cuando).slice(0, 10);
+        ctx.toast(nuevaFecha !== fecha0 ? `Movida al ${formatoFecha(nuevaFecha)}` : "Hora cambiada.", { tipo: "ok" });
+        await alCambiar?.();
+      } catch (err) {
+        ctx.toast(mensajeError(err), { tipo: "error" });
+        for (const b of form.querySelectorAll("button")) enUso(b, false);
+      }
+    } },
+      campos.caja,
+      aviso,
+      el("div", { class: "entrada-acciones" },
+        el("button", { type: "submit", class: "btn btn-primario btn-chico" }, "Guardar"),
+        el("button", { type: "button", class: "btn-texto", onclick: cerrar }, "Cancelar")));
+    form.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); cerrar(); }
+    });
+    form.addEventListener("input", () => {
+      aviso.textContent = "";
+      campos.dia.classList.remove("invalido");
+      campos.hora.classList.remove("invalido");
+    });
+    boton?.setAttribute("aria-expanded", "true");
+    entrada.querySelector(".entrada-linea").after(form);
+    campos.dia.focus();
   }
 
   async function descartarla(e) {

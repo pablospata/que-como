@@ -671,6 +671,49 @@ test("cambiarNota y descartar: parchean todas las piezas del grupo y nada más",
   assert.deepEqual(parche, { appProperties: { estado: "descartada" } });
 });
 
+test("cambiarMomento: cambia la tomada de todas las piezas del grupo (no las de la papelera ni otros grupos)", async () => {
+  const { api, drive } = await preparar();
+  const grupo = "g-20261022-134012-a3f9";
+  const vieja = "2026-10-22T13:40:12-03:00";
+  const a = pieza(drive, { grupo, tomada: vieja, nombre: "a.jpg", nota: "puré" });
+  const b = pieza(drive, { grupo, tomada: "2026-10-22T13:41:00-03:00", nombre: "b.txt", tipo: "texto" });
+  const tirada = pieza(drive, { grupo, tomada: vieja, nombre: "c.jpg" });
+  tirada.trashed = true;
+  const otra = pieza(drive, { grupo: "g-otro", tomada: vieja, nombre: "d.jpg" });
+
+  await api.cambiarMomento(grupo, "2026-10-21T21:15:12-03:00");
+  for (const p of [a, b]) {
+    assert.deepEqual(p.appProperties, { quecomo: p === a ? "foto" : "texto", grupo,
+      tomada: "2026-10-21T21:15:12-03:00", estado: "pendiente" });
+  }
+  assert.equal(a.description, "puré", "la nota no se toca");
+  assert.equal(tirada.appProperties.tomada, vieja);
+  assert.equal(otra.appProperties.tomada, vieja);
+  const parches = drive.de("PATCH", "/drive/v3/files/");
+  assert.equal(parches.length, 2);
+  assert.deepEqual(JSON.parse(parches[0].cuerpo), { appProperties: { tomada: "2026-10-21T21:15:12-03:00" } });
+
+  // pendientes() la muestra con la tomada nueva (y el mismo grupo)
+  const [cap] = (await api.pendientes()).filter((c) => c.grupo === grupo);
+  assert.equal(cap.tomada, "2026-10-21T21:15:12-03:00");
+
+  // un Date local se guarda como ISO con zona
+  await api.cambiarMomento(grupo, new Date(2026, 9, 20, 8, 5, 9));
+  assert.match(a.appProperties.tomada, /^2026-10-20T08:05:09[+-]\d\d:\d\d$/);
+
+  // algo que no es una fecha: error drive, sin tocar la red
+  const antes = drive.llamadas.length;
+  await rechazo(api.cambiarMomento(grupo, "ayer"), "drive");
+  assert.equal(drive.llamadas.length, antes);
+});
+
+test("cambiarMomento sin token: sin_login sin tocar la red", async () => {
+  const { api, drive } = await preparar({ conToken: false });
+  const e = await rechazo(api.cambiarMomento("g-20261022-134012-a3f9", "2026-10-21T21:15:12-03:00"), "sin_login");
+  assert.equal(e.message, "Tenés que conectar el Drive.");
+  assert.equal(drive.llamadas.length, 0);
+});
+
 test("urlFoto: baja la foto una sola vez y devuelve una object URL", async () => {
   const { api, drive } = await preparar();
   const f = drive.agregar({ name: "a.jpg", contenido: "JPEG" });
@@ -756,7 +799,7 @@ test("guardarPeso ordena por fecha; guardarPerfil y leerPerfil ida y vuelta", as
 test("la API exportada es exactamente la del contrato", async () => {
   const { api } = await preparar();
   const esperadas = [
-    "actualizarRegistro", "cambiarNota", "conectar", "crearTexto", "desconectar", "descartar",
+    "actualizarRegistro", "cambiarMomento", "cambiarNota", "conectar", "crearTexto", "desconectar", "descartar",
     "estado", "guardarPerfil", "guardarPeso", "leerPerfil", "leerPeso", "leerRegistro",
     "pendientes", "subirFoto", "urlFoto",
   ].sort();
