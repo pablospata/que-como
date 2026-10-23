@@ -339,3 +339,13 @@ div.cap-tira-item { cursor: default; }
 @media (min-width: 420px) { .cap-hoja-cuando { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 .cap-hoja-aviso { margin: 0; font-size: .85rem; color: var(--error); }
 .cap-hoja-aviso:empty { display: none; }
+
+/* nota de la foto abierta en grande */
+.cap-visor-nota {
+  position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); width: min(92vw, 480px);
+  display: flex; gap: 8px; align-items: flex-end;
+  background: var(--superficie); border-radius: var(--radio); padding: 10px;
+  box-shadow: var(--sombra);
+}
+.cap-visor-nota .entrada { flex: 1; min-width: 0; font-size: 16px; min-height: 0; resize: none; }

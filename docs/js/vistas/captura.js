@@ -5,7 +5,7 @@ import { comprimir, fechaDeArchivo } from "../imagen.js";
 import * as cola from "../cola.js";
 import { botonTema, soltarBotonTema } from "../tema.js";
 
-const INACTIVIDAD_MS = 60000;
+const INACTIVIDAD_MS = 180000;
 
 const TEXTO_ESTADO = {
   preparando: "preparando…",
@@ -125,10 +125,19 @@ export async function montar(contenedor, params, ctx) {
   );
 
   // foto grande
+  // foto grande, con la nota de su comida para corregirla aunque ya haya pasado un rato
   const visorImg = el("img", { alt: "" });
+  const visorNotaArea = el("textarea", { class: "entrada", rows: "2", maxlength: "1000",
+    placeholder: "Nota", "aria-label": "Nota de esta comida" });
+  const visorNotaGuardar = el("button", { class: "btn btn-primario btn-chico", type: "button",
+    onclick: () => guardarNotaVisor() }, "Guardar");
+  const visorNota = el("div", { class: "cap-visor-nota", hidden: true, onclick: (e) => e.stopPropagation() },
+    visorNotaArea, visorNotaGuardar);
+  let visorGrupo = null;                  // {grupo, nota, enCola} de la foto abierta
   const visor = el("div", { class: "cap-visor", hidden: true, role: "dialog", "aria-modal": "true",
     "aria-label": "Foto", onclick: cerrarVisor },
     visorImg,
+    visorNota,
     el("button", { class: "btn-icono cap-visor-cerrar", type: "button", "aria-label": "Cerrar" }, icono("cerrar", 24)),
   );
 
@@ -436,7 +445,8 @@ export async function montar(contenedor, params, ctx) {
           const u = urlDe(new Blob([i.bytes], { type: i.mime || "image/jpeg" }));
           nuevasUrls.push(u);
           items.push(miniTira([el("img", { src: u, alt: "" }), el("span", { class: "cap-tira-reloj" }, icono("reloj", 14))],
-            { etiqueta: `Foto en cola, ${horaDe(i.tomada)}`, clase: "en-cola", onclick: () => abrirVisor(u) }));
+            { etiqueta: `Foto en cola, ${horaDe(i.tomada)}`, clase: "en-cola",
+              onclick: () => abrirVisor(u, { grupo: i.grupo, nota: i.nota || "", enCola: true }) }));
         } else if (i.tipo === "texto") {
           items.push(miniTira(el("span", { class: "cap-tira-texto" }, i.texto),
             { etiqueta: `En cola: ${i.texto}`, clase: "en-cola" }));
@@ -455,7 +465,7 @@ export async function montar(contenedor, params, ctx) {
               const img = el("img", { alt: "", loading: "lazy" });
               datos.urlFoto(p.id).then((u) => { img.src = u; }).catch(() => img.classList.add("sin-foto"));
               items.push(miniTira(img, { etiqueta: `Foto de las ${horaDe(g.tomada)}`,
-                onclick: () => img.src && abrirVisor(img.src) }));
+                onclick: () => img.src && abrirVisor(img.src, { grupo: g.grupo, nota: g.nota || "" }) }));
             } else {
               items.push(miniTira(el("span", { class: "cap-tira-texto" }, g.nota || "texto"),
                 { etiqueta: g.nota || "Anotación sin foto" }));
@@ -477,15 +487,51 @@ export async function montar(contenedor, params, ctx) {
 
   // ------------------------------------------------------------ visor
 
-  function abrirVisor(src) {
+  function abrirVisor(src, grupo = null) {
     tocar();
     visorImg.src = src;
+    visorGrupo = grupo;
+    visorNota.hidden = !grupo;
+    visorNotaArea.value = grupo ? grupo.nota : "";
     visor.hidden = false;
   }
 
   function cerrarVisor() {
     visor.hidden = true;
     visorImg.removeAttribute("src");
+    visorGrupo = null;
+  }
+
+  /** Nota de una foto de la tira: si todavía está en la cola, se cambia ahí; si no, en el Drive. */
+  async function guardarNotaVisor() {
+    const g = visorGrupo;
+    const nota = visorNotaArea.value.trim();
+    if (!g || nota === g.nota) { cerrarVisor(); return; }
+    visorNotaGuardar.disabled = true;
+    try {
+      if (g.enCola) {
+        await cola.actualizarNota(g.grupo, nota);
+      } else {
+        try {
+          await datos.cambiarNota(g.grupo, nota);
+        } catch (e) {
+          if (!(e && (e.codigo === "sin_conexion" || e.codigo === "sin_login"))) throw e;
+          await cola.encolar({ tipo: "nota", grupo: g.grupo, nota });
+          pintarCuenta();
+        }
+      }
+      if (actual && actual.grupo === g.grupo) {
+        actual.notaGuardada = nota;
+        notaArea.value = nota;
+      }
+      cerrarVisor();
+      ctx.toast("Nota guardada", { tipo: "ok" });
+      refrescarTira();
+    } catch (e) {
+      error(e);
+    } finally {
+      visorNotaGuardar.disabled = false;
+    }
   }
 
   // ------------------------------------------------------------ eventos
